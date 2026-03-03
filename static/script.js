@@ -1,4 +1,5 @@
-const API_URL = window.location.hostname.includes('github.io') ? 'http://127.0.0.1:5000' : '';
+const API_URL = window.location.hostname.includes('github.io') ? '.' : '';
+const DATA_SOURCE = window.location.hostname.includes('github.io') ? 'data.json' : '/api/data';
 
 let productosFull = []; // Base de datos local para filtrar rápido
 
@@ -7,7 +8,7 @@ async function cargarCatalogo() {
     grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">⏳ Cargando catálogo digital...</p>';
 
     try {
-        const response = await fetch(`${API_URL}/api/data`);
+        const response = await fetch(`${API_URL}/${DATA_SOURCE}`);
         if (!response.ok) throw new Error('Error en la respuesta del servidor');
         productosFull = await response.json();
 
@@ -106,23 +107,23 @@ function moveGallery(btn, direction) {
 }
 
 document.getElementById('refreshBtn').addEventListener('click', async () => {
-    const status = document.getElementById('status');
-    status.innerText = "⏳ Sincronizando con tu archivo...";
-
-    try {
-        const response = await fetch(`${API_URL}/api/refresh`, { method: 'POST' });
-        const data = await response.json();
-
-        if (data.status === 'success') {
-            status.innerText = "✅ " + data.message;
-            status.style.color = "#38bdf8";
-            cargarCatalogo(); // Recargar el preview
-        } else {
-            status.innerText = "❌ Error: " + data.message;
-        }
-    } catch (error) {
-        status.innerText = "📡 Error de conexión con el motor de Thania.";
+    if (window.location.hostname.includes('github.io')) {
+        alert("⚠️ La sincronización automática solo funciona desde tu computadora (modo local). Para actualizar los datos en la web pública, debés volver a generar el archivo data.json y subirlo a GitHub.");
+        return;
     }
+    const status = document.getElementById('status');
+    const data = await response.json();
+
+    if (data.status === 'success') {
+        status.innerText = "✅ " + data.message;
+        status.style.color = "#38bdf8";
+        cargarCatalogo(); // Recargar el preview
+    } else {
+        status.innerText = "❌ Error: " + data.message;
+    }
+} catch (error) {
+    status.innerText = "📡 Error de conexión con el motor de Thania.";
+}
 });
 
 function compartirWhatsApp(marca, modelo, calidad, color, talles, precio) {
