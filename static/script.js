@@ -1,14 +1,26 @@
-const API_URL = window.location.hostname.includes('github.io') ? '.' : '';
-const DATA_SOURCE = window.location.hostname.includes('github.io') ? 'data.json' : '/api/data';
+// Configuración de rutas dinámica
+const isGitHub = window.location.hostname.includes('github.io');
+const isLocalFile = window.location.protocol === 'file:';
+
+// Si es archivo local, intentamos conectar al servidor Flask en localhost:5000
+const API_URL = isGitHub ? '.' : (isLocalFile ? 'http://localhost:5000' : '');
+const DATA_SOURCE = isGitHub ? 'data.json' : 'api/data';
 
 let productosFull = []; // Base de datos local para filtrar rápido
 
 async function cargarCatalogo() {
     const grid = document.getElementById('catalogGrid');
-    grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">⏳ Cargando catálogo digital...</p>';
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    // Si estamos en local (o file), aseguramos que el link de descarga apunte al servidor
+    if (downloadBtn && !isGitHub) {
+        downloadBtn.href = `${API_URL}/api/download`;
+    }
+
+    grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">⏳ Cargando catálogo digital 2026...</p>';
 
     try {
-        const response = await fetch(`${API_URL}/${DATA_SOURCE}`);
+        const response = await fetch(`${API_URL}${DATA_SOURCE}`);
         if (!response.ok) throw new Error('Error en la respuesta del servidor');
         productosFull = await response.json();
 
@@ -17,7 +29,7 @@ async function cargarCatalogo() {
 
     } catch (error) {
         console.error('Error:', error);
-        grid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color:#ff4444;">📡 Error de conexión. Asegurate de que el motor Thania esté activo.</p>`;
+        grid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color:#ff4444;">📡 Error de conexión. <br><small>Asegurate de que el motor Thania (Flask) esté activo en tu PC.</small></p>`;
     }
 }
 
@@ -66,7 +78,7 @@ function renderizarProductos(lista) {
             <div class="product-name">${p.Marca || ''} ${p.Modelo || ''}</div>
             <div class="product-price">$${precioDisplay}</div>
             <div class="product-talle">Talles: ${p['Rango de talles'] || '-'}</div>
-            <button class="btn-ws" onclick="compartirWhatsApp('${p.Marca}', '${p.Modelo}', '${p.Calidad}', '${p.Colores ? p.Colores.join(', ') : ''}', '${p['Rango de talles']}', '${precioDisplay}')">
+            <button class="btn-ws" onclick="compartirWhatsApp('${p.Marca}', '${p.Modelo}', '${p.Calidad}', '${p.Colores ? p.Colores.join(', ') : ''}', '${p['Rango de talles']}', '${precioDisplay}', '${p.Fotos && p.Fotos.length > 0 ? p.Fotos[0] : ''}')">
                 Compartir WhatsApp
             </button>
         `;
@@ -112,31 +124,52 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
         return;
     }
     const status = document.getElementById('status');
-    const data = await response.json();
+    status.innerText = "⏳ Sincronizando con Excel y enviando a GitHub...";
 
-    if (data.status === 'success') {
-        status.innerText = "✅ " + data.message;
-        status.style.color = "#38bdf8";
-        cargarCatalogo(); // Recargar el preview
-    } else {
-        status.innerText = "❌ Error: " + data.message;
+    try {
+        const response = await fetch(`${API_URL}/api/refresh`, { method: 'POST' });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            status.innerText = "✅ " + data.message;
+            status.style.color = "#38bdf8";
+            cargarCatalogo(); // Recargar el preview
+        } else {
+            status.innerText = "❌ Error: " + data.message;
+        }
+    } catch (error) {
+        status.innerText = "📡 Error de conexión con el motor de Thania.";
     }
-} catch (error) {
-    status.innerText = "📡 Error de conexión con el motor de Thania.";
-}
 });
 
-function compartirWhatsApp(marca, modelo, calidad, color, talles, precio) {
-    // Usamos el formato exacto solicitado por el usuario
-    const textoMensaje = `🔥🎁LLEVÁTE SURTIDO🎁🔥
-${marca.toUpperCase()} ${modelo.toUpperCase()}
-🔥${(calidad || 'TRIPLE A').toUpperCase()}🔥
-✅Surtido a elección $${precio} c/par
-📍Talle en ${talles}
+function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, fotoUrl) {
+    // Definimos emojis usando secuencias de escape de 16 bits (Surrogates)
+    // Esto es 100% independiente de la codificación del archivo .js
+    const eFuego = "\uD83D\uDD25";
+    const eRegalo = "\uD83C\uDF81";
+    const eCheck = "\u2705";
+    const ePin = "\uD83D\uDCCD";
+    const eShoe = "\uD83D\uDC5F";
+    const eRocket = "\uD83D\uDE80";
 
-#THANIABUSINESS 🇧🇷🇦🇷`;
+    // Convertir fotoUrl relativa en absoluta para que WhatsApp la vea
+    const absoluteFotoUrl = fotoUrl.startsWith('/') ? window.location.origin + fotoUrl : fotoUrl;
 
-    const url = `https://wa.me/?text=${encodeURIComponent(textoMensaje)}`;
+    // TRUCO DE INVISIBILIDAD: 3500 espacios desplazan el link fuera de la vista del usuario
+    // pero WhatsApp sigue capturándolo para la previsualización de la imagen.
+    const espacios = " ".repeat(3500);
+
+    const textoMensaje =
+        eFuego + eRegalo + " *LLEV\u00C1TE SURTIDO* " + eRegalo + eFuego + "\n" +
+        "*" + marca.toUpperCase() + " " + modelo.toUpperCase() + "*\n" +
+        eFuego + " *" + (calidad || 'TRIPLE A').toUpperCase() + "* " + eFuego + "\n" +
+        eCheck + " Surtido a elecci\u00F3n $" + precio + " c/par\n" +
+        ePin + " Talle en " + talles + "\n\n" +
+        "#THANIABUSINESS " + eShoe + eRocket +
+        espacios + "\n" +
+        "Ver producto: " + absoluteFotoUrl;
+
+    const url = "https://wa.me/?text=" + encodeURIComponent(textoMensaje);
     window.open(url, '_blank');
 }
 
