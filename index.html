@@ -4,9 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thania - Catálogo Premium</title>
-    <!-- RUTA ABSOLUTA RELATIVA PARA GITHUB -->
-    <link rel="stylesheet" href="./static/style.css">
+    <title>Thania - Colección Premium 2026</title>
+    <meta name="description"
+        content="Catálogo oficial de Thania. Calidad y estilo en cada paso. Zapatillas urbanas premium.">
+
+    <!-- Open Graph / WhatsApp Preview -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Thania - Catálogo Oficial 2026">
+    <meta property="og:description"
+        content="Descubrí lo último en zapatillas urbanas. Calidad Premium y Envío a todo el país.">
+    <meta property="og:url" content="https://thaniacatalogo.github.io/">
+
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -22,6 +31,7 @@
                     <input type="text" id="searchInput" placeholder="🔍 Buscar marca o modelo (ej. Jordan)...">
                 </div>
                 <div class="filter-group" id="brandFilters">
+                    <!-- Botones de marcas automáticos -->
                 </div>
                 <div class="main-buttons">
                     <button id="refreshBtn" class="btn premium">Sincronizar Datos</button>
@@ -37,12 +47,11 @@
             </section>
 
             <div id="catalogGrid" class="catalog-grid">
-                <p style="text-align: center;">Cargando catálogo...</p>
+                <!-- Los productos se cargarán aquí dinámicamente -->
             </div>
         </main>
     </div>
-    <!-- RUTA ABSOLUTA RELATIVA PARA GITHUB -->
-    <script src="./static/script.js"></script>
+    <script src="script.js"></script>
 </body>
 
 </html>
