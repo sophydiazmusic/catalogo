@@ -3,8 +3,8 @@ const isGitHub = window.location.hostname.includes('github.io');
 const isLocalFile = window.location.protocol === 'file:';
 
 // Si es archivo local, intentamos conectar al servidor Flask en localhost:5000
-const API_URL = isGitHub ? '.' : (isLocalFile ? 'http://localhost:5000' : '');
-const DATA_SOURCE = isGitHub ? 'data.json' : 'api/data';
+const API_URL = isGitHub ? '' : (isLocalFile ? 'http://localhost:5000' : '');
+const DATA_SOURCE = isGitHub ? 'data.json' : '/api/data';
 
 let productosFull = []; // Base de datos local para filtrar rápido
 
