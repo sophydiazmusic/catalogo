@@ -188,7 +188,13 @@ function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, codigo
         ePin + " Talle en " + tal + "\n\n" +
         "#THANIABUSINESS " + eShoe + " " + eRocket;
 
-    const url = "https://wa.me/?text=" + encodeURIComponent(textoMensaje);
+    // DETECCIÓN DE MÓVIL VS DESKTOP
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // En escritorio (WhatsApp Web), 'web.whatsapp.com/send' es mucho más confiable que 'wa.me'
+    const waBase = isMobile ? "https://wa.me/?text=" : "https://web.whatsapp.com/send?text=";
+
+    const url = waBase + encodeURIComponent(textoMensaje);
     window.open(url, '_blank');
 }
 
