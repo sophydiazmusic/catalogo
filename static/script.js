@@ -196,7 +196,8 @@ function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, codigo
     if (baseUrl.endsWith('index.html')) baseUrl = baseUrl.replace('index.html', '');
     if (!baseUrl.endsWith('/')) baseUrl += '/';
 
-    const landingUrl = baseUrl + "p/" + codigo + ".html";
+    const timestamp = new Date().getTime();
+    const landingUrl = baseUrl + "p/" + codigo + ".html?t=" + timestamp;
 
     const m = (marca || '').trim().toUpperCase();
     const mod = (modelo || '').trim().toUpperCase();
