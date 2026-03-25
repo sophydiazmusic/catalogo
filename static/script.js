@@ -158,8 +158,33 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
     }
 });
 
+function toUtf8PercentEncode(str) {
+    let encoded = "";
+    for (let i = 0; i < str.length; i++) {
+        let charcode = str.charCodeAt(i);
+        if (charcode < 0x80) {
+            const c = str.charAt(i);
+            encoded += (/[a-zA-Z0-9\-\_\.\~\*]/.test(c)) ? c : encodeURIComponent(c);
+        } else if (charcode < 0x800) {
+            encoded += "%" + (0xc0 | (charcode >> 6)).toString(16).toUpperCase();
+            encoded += "%" + (0x80 | (charcode & 0x3f)).toString(16).toUpperCase();
+        } else if (charcode < 0xd800 || charcode >= 0xe000) {
+            encoded += "%" + (0xe0 | (charcode >> 12)).toString(16).toUpperCase();
+            encoded += "%" + (0x80 | ((charcode >> 6) & 0x3f)).toString(16).toUpperCase();
+            encoded += "%" + (0x80 | (charcode & 0x3f)).toString(16).toUpperCase();
+        } else {
+            i++;
+            charcode = 0x10000 + (((charcode & 0x3ff) << 10) | (str.charCodeAt(i) & 0x3ff));
+            encoded += "%" + (0xf0 | (charcode >> 18)).toString(16).toUpperCase();
+            encoded += "%" + (0x80 | ((charcode >> 12) & 0x3f)).toString(16).toUpperCase();
+            encoded += "%" + (0x80 | ((charcode >> 6) & 0x3f)).toString(16).toUpperCase();
+            encoded += "%" + (0x80 | (charcode & 0x3f)).toString(16).toUpperCase();
+        }
+    }
+    return encoded;
+}
+
 function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, codigo) {
-    // Emojis literales (soportados por charset="UTF-8")
     const eFuego = "🔥";
     const eRegalo = "🎁";
     const eCheck = "✅";
@@ -167,7 +192,6 @@ function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, codigo
     const eShoe = "👟";
     const eRocket = "🚀";
 
-    // Link a la Landing Page del producto (para que WhatsApp muestre la tarjeta con foto)
     let baseUrl = window.location.href.split('?')[0].split('#')[0];
     if (baseUrl.endsWith('index.html')) baseUrl = baseUrl.replace('index.html', '');
     if (!baseUrl.endsWith('/')) baseUrl += '/';
@@ -188,13 +212,7 @@ function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, codigo
         ePin + " Talle en " + tal + "\n\n" +
         "#THANIABUSINESS " + eShoe + " " + eRocket;
 
-    // DETECCIÓN DE MÓVIL VS DESKTOP
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    // En escritorio (WhatsApp Web), 'web.whatsapp.com/send' es mucho más confiable que 'wa.me'
-    const waBase = isMobile ? "https://wa.me/?text=" : "https://web.whatsapp.com/send?text=";
-
-    const url = waBase + encodeURIComponent(textoMensaje);
+    const url = "https://api.whatsapp.com/send?text=" + toUtf8PercentEncode(textoMensaje);
     window.open(url, '_blank');
 }
 
