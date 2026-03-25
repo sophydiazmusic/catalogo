@@ -58,18 +58,21 @@ function renderizarProductos(lista) {
         const card = document.createElement('div');
         card.className = 'product-card';
         const precioDisplay = p['Precio x 1'] || p['Precio x 1 Visible'] || '0';
-        const hasMultiple = p.Fotos && p.Fotos.length > 1;
+        const hasMultiple = p.Fotos && p.Fotos.length > 0;
 
-        let fotosHtml = p.Fotos && p.Fotos.length > 0
+        // Priorizamos los links de fotos procesados (lh3) sobre el Foto Url original (drive)
+        const principalFoto = (p.Fotos && p.Fotos.length > 0) ? p.Fotos[0] : (p['Foto Url'] || '');
+
+        let fotosHtml = hasMultiple
             ? `<div class="gallery-container">
-                ${hasMultiple ? `<button class="nav-btn prev" onclick="moveGallery(this, -1)">❮</button>` : ''}
-                <div class="product-gallery ${hasMultiple ? 'multi' : ''}">
+                ${p.Fotos.length > 1 ? `<button class="nav-btn prev" onclick="moveGallery(this, -1)">❮</button>` : ''}
+                <div class="product-gallery ${p.Fotos.length > 1 ? 'multi' : ''}">
                     ${p.Fotos.map(f => {
                 const fullUrl = f.startsWith('/') ? `${API_URL}${f}` : f;
                 return `<img src="${fullUrl}" class="product-img" onerror="this.src='https://via.placeholder.com/300x200?text=Thania'">`;
             }).join('')}
                 </div>
-                ${hasMultiple ? `<button class="nav-btn next" onclick="moveGallery(this, 1)">❯</button>` : ''}
+                ${p.Fotos.length > 1 ? `<button class="nav-btn next" onclick="moveGallery(this, 1)">❯</button>` : ''}
                </div>`
             : `<img src="https://via.placeholder.com/300x200?text=Thania" class="product-img">`;
 
@@ -78,7 +81,7 @@ function renderizarProductos(lista) {
             <div class="product-name">${p.Marca || ''} ${p.Modelo || ''}</div>
             <div class="product-price">$${precioDisplay}</div>
             <div class="product-talle">Talles: ${p['Rango de talles'] || '-'}</div>
-            <button class="btn-ws" onclick="compartirWhatsApp('${p.Marca}', '${p.Modelo}', '${p.Calidad}', '${p.Colores ? p.Colores.join(', ') : ''}', '${p['Rango de talles']}', '${precioDisplay}', '${p['Foto Url'] || (p.Fotos && p.Fotos.length > 0 ? p.Fotos[0] : '')}')">
+            <button class="btn-ws" onclick="compartirWhatsApp('${p.Marca}', '${p.Modelo}', '${p.Calidad}', '${p.Colores ? p.Colores.join(', ') : ''}', '${p['Rango de talles']}', '${precioDisplay}', '${principalFoto}')">
                 Compartir WhatsApp
             </button>
         `;
@@ -143,34 +146,47 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
 });
 
 function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, fotoUrl) {
-    // Usamos escapes Unicode para asegurar compatibilidad total de codificación (UTF-8)
-    // 🔥, 🎁, ✅, 📍, 👟, 🚀
-    const eFuego = "\uD83D\uDD25";
-    const eRegalo = "\uD83C\uDF81";
-    const eCheck = "\u2705";
-    const ePin = "\uD83D\uDCCD";
-    const eShoe = "\uD83D\uDC5F";
-    const eRocket = "\uD83D\uDE80";
+    // Generación de emojis por punto de código para máxima compatibilidad UTF-8
+    const eFuego = String.fromCodePoint(0x1F525);
+    const eRegalo = String.fromCodePoint(0x1F381);
+    const eCheck = String.fromCodePoint(0x2705);
+    const ePin = String.fromCodePoint(0x1F4CD);
+    const eShoe = String.fromCodePoint(0x1F45F);
+    const eRocket = String.fromCodePoint(0x1F680);
 
-    // Limpiamos espacios extras y aseguramos mayúsculas
+    let finalUrl = fotoUrl;
+
+    // Failsafe: Si recibimos un link de Drive directo (no procesado), lo convertimos aquí
+    if (finalUrl.includes('drive.google.com')) {
+        let fileId = "";
+        if (finalUrl.includes('/file/d/')) {
+            fileId = finalUrl.split('/file/d/')[1].split('/')[0];
+        } else if (finalUrl.includes('id=')) {
+            fileId = finalUrl.split('id=')[1].split('&')[0];
+        }
+        if (fileId) {
+            finalUrl = "https://lh3.googleusercontent.com/d/" + fileId;
+        }
+    }
+
+    // Limpieza de parámetros y optimización para previsualización
+    if (finalUrl.includes('googleusercontent.com')) {
+        finalUrl = finalUrl.split('?')[0] + "?w=800";
+    }
+
+    // Aseguramos URL absoluta
+    if (finalUrl.startsWith('/')) {
+        finalUrl = window.location.origin + finalUrl;
+    }
+
+    // Limpieza de textos decorativos
     const m = (marca || '').trim().toUpperCase();
     const mod = (modelo || '').trim().toUpperCase();
     const cal = (calidad || 'TRIPLE A').trim().toUpperCase();
     const tal = (talles || '34-43').trim();
 
-    // Aseguramos URL absoluta. WhatsApp prefiere el link limpio al principio 
-    // y solo (sin texto 'Ver producto') para generar la tarjeta de vista previa (card).
-    let absoluteFotoUrl = fotoUrl.startsWith('/') ? window.location.origin + fotoUrl : fotoUrl;
-
-    // Si la URL es de Google, removemos el ?.jpg si existiera (limpiamos)
-    if (absoluteFotoUrl.includes('googleusercontent.com')) {
-        // Limpiamos parámetros previos y agregamos w=800 para forzar imagen directa de calidad
-        const baseUrl = absoluteFotoUrl.split('?')[0];
-        absoluteFotoUrl = baseUrl + "?w=800";
-    }
-
     const textoMensaje =
-        absoluteFotoUrl + "\n\n" +
+        finalUrl + "\n\n" +
         eFuego + eRegalo + " *LLEV\u00C1TE SURTIDO* " + eRegalo + eFuego + "\n" +
         "*" + m + " " + mod + "*\n" +
         eFuego + " *" + cal + "* " + eFuego + "\n" +
