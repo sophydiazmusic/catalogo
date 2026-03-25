@@ -78,7 +78,7 @@ function renderizarProductos(lista) {
             <div class="product-name">${p.Marca || ''} ${p.Modelo || ''}</div>
             <div class="product-price">$${precioDisplay}</div>
             <div class="product-talle">Talles: ${p['Rango de talles'] || '-'}</div>
-            <button class="btn-ws" onclick="compartirWhatsApp('${p.Marca}', '${p.Modelo}', '${p.Calidad}', '${p.Colores ? p.Colores.join(', ') : ''}', '${p['Rango de talles']}', '${precioDisplay}', '${p.Fotos && p.Fotos.length > 0 ? p.Fotos[0] : ''}')">
+            <button class="btn-ws" onclick="compartirWhatsApp('${p.Marca}', '${p.Modelo}', '${p.Calidad}', '${p.Colores ? p.Colores.join(', ') : ''}', '${p['Rango de talles']}', '${precioDisplay}', '${p['Foto Url'] || (p.Fotos && p.Fotos.length > 0 ? p.Fotos[0] : '')}')">
                 Compartir WhatsApp
             </button>
         `;
@@ -143,8 +143,8 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
 });
 
 function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, fotoUrl) {
-    // Definimos emojis usando secuencias de escape de 16 bits (Surrogates)
-    // Esto es 100% independiente de la codificación del archivo .js
+    // Usamos escapes Unicode para asegurar compatibilidad total de codificación (UTF-8)
+    // 🔥, 🎁, ✅, 📍, 👟, 🚀
     const eFuego = "\uD83D\uDD25";
     const eRegalo = "\uD83C\uDF81";
     const eCheck = "\u2705";
@@ -152,22 +152,31 @@ function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, fotoUr
     const eShoe = "\uD83D\uDC5F";
     const eRocket = "\uD83D\uDE80";
 
-    // Convertir fotoUrl relativa en absoluta para que WhatsApp la vea
-    const absoluteFotoUrl = fotoUrl.startsWith('/') ? window.location.origin + fotoUrl : fotoUrl;
+    // Limpiamos espacios extras y aseguramos mayúsculas
+    const m = (marca || '').trim().toUpperCase();
+    const mod = (modelo || '').trim().toUpperCase();
+    const cal = (calidad || 'TRIPLE A').trim().toUpperCase();
+    const tal = (talles || '34-43').trim();
 
-    // TRUCO DE INVISIBILIDAD: 3500 espacios desplazan el link fuera de la vista del usuario
-    // pero WhatsApp sigue capturándolo para la previsualización de la imagen.
-    const espacios = " ".repeat(3500);
+    // Aseguramos URL absoluta. WhatsApp prefiere el link limpio al principio 
+    // y solo (sin texto 'Ver producto') para generar la tarjeta de vista previa (card).
+    let absoluteFotoUrl = fotoUrl.startsWith('/') ? window.location.origin + fotoUrl : fotoUrl;
+
+    // Si la URL es de Google, removemos el ?.jpg si existiera (limpiamos)
+    if (absoluteFotoUrl.includes('googleusercontent.com')) {
+        // Limpiamos parámetros previos y agregamos w=800 para forzar imagen directa de calidad
+        const baseUrl = absoluteFotoUrl.split('?')[0];
+        absoluteFotoUrl = baseUrl + "?w=800";
+    }
 
     const textoMensaje =
+        absoluteFotoUrl + "\n\n" +
         eFuego + eRegalo + " *LLEV\u00C1TE SURTIDO* " + eRegalo + eFuego + "\n" +
-        "*" + marca.toUpperCase() + " " + modelo.toUpperCase() + "*\n" +
-        eFuego + " *" + (calidad || 'TRIPLE A').toUpperCase() + "* " + eFuego + "\n" +
+        "*" + m + " " + mod + "*\n" +
+        eFuego + " *" + cal + "* " + eFuego + "\n" +
         eCheck + " Surtido a elecci\u00F3n $" + precio + " c/par\n" +
-        ePin + " Talle en " + talles + "\n\n" +
-        "#THANIABUSINESS " + eShoe + eRocket +
-        espacios + "\n" +
-        "Ver producto: " + absoluteFotoUrl;
+        ePin + " Talle en " + tal + "\n\n" +
+        "#THANIABUSINESS " + eShoe + eRocket;
 
     const url = "https://wa.me/?text=" + encodeURIComponent(textoMensaje);
     window.open(url, '_blank');
