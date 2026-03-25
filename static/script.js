@@ -146,17 +146,17 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
 });
 
 function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, fotoUrl) {
-    // Generación de emojis por punto de código para máxima compatibilidad UTF-8
-    const eFuego = String.fromCodePoint(0x1F525);
-    const eRegalo = String.fromCodePoint(0x1F381);
-    const eCheck = String.fromCodePoint(0x2705);
-    const ePin = String.fromCodePoint(0x1F4CD);
-    const eShoe = String.fromCodePoint(0x1F45F);
-    const eRocket = String.fromCodePoint(0x1F680);
+    // Definimos los emojis YA codificados para URL (esto evita errores de codificación del navegador)
+    const eFuego = '%F0%9F%94%A5'; // 🔥
+    const eRegalo = '%F0%9F%8E%81'; // 🎁
+    const eCheck = '%E2%9C%85';     // ✅
+    const ePin = '%F0%9F%93%8D'; // 📍
+    const eShoe = '%F0%9F%91%9F'; // 👟
+    const eRocket = '%F0%9F%9A%80'; // 🚀
 
     let finalUrl = fotoUrl;
 
-    // Failsafe: Si recibimos un link de Drive directo (no procesado), lo convertimos aquí
+    // Failsafe: Conversión de link de Drive a link de imagen directa (lh3)
     if (finalUrl.includes('drive.google.com')) {
         let fileId = "";
         if (finalUrl.includes('/file/d/')) {
@@ -169,9 +169,10 @@ function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, fotoUr
         }
     }
 
-    // Limpieza de parámetros y optimización para previsualización
+    // Optimización de la URL para que WhatsApp la detecte mejor como imagen
+    // Usamos el formato "=s800" que es más estándar para previsualización
     if (finalUrl.includes('googleusercontent.com')) {
-        finalUrl = finalUrl.split('?')[0] + "?w=800";
+        finalUrl = finalUrl.split('?')[0] + "=s800";
     }
 
     // Aseguramos URL absoluta
@@ -179,22 +180,26 @@ function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, fotoUr
         finalUrl = window.location.origin + finalUrl;
     }
 
-    // Limpieza de textos decorativos
+    // Limpieza de campos
     const m = (marca || '').trim().toUpperCase();
     const mod = (modelo || '').trim().toUpperCase();
     const cal = (calidad || 'TRIPLE A').trim().toUpperCase();
     const tal = (talles || '34-43').trim();
 
-    const textoMensaje =
-        finalUrl + "\n\n" +
-        eFuego + eRegalo + " *LLEV\u00C1TE SURTIDO* " + eRegalo + eFuego + "\n" +
-        "*" + m + " " + mod + "*\n" +
-        eFuego + " *" + cal + "* " + eFuego + "\n" +
-        eCheck + " Surtido a elecci\u00F3n $" + precio + " c/par\n" +
-        ePin + " Talle en " + tal + "\n\n" +
-        "#THANIABUSINESS " + eShoe + eRocket;
+    // Construimos el mensaje por partes codificadas para asegurar perfección
+    const nl = '%0A'; // Salto de línea codificado
+    const space = '%20';
 
-    const url = "https://wa.me/?text=" + encodeURIComponent(textoMensaje);
+    const textoMensaje =
+        encodeURIComponent(finalUrl) + nl + nl +
+        eFuego + eRegalo + space + encodeURIComponent("*LLEV\u00C1TE SURTIDO*") + space + eRegalo + eFuego + nl +
+        encodeURIComponent("*" + m + " " + mod + "*") + nl +
+        eFuego + space + encodeURIComponent("*" + cal + "*") + space + eFuego + nl +
+        eCheck + space + encodeURIComponent("Surtido a elecci\u00F3n $" + precio + " c/par") + nl +
+        ePin + space + encodeURIComponent("Talle en " + tal) + nl + nl +
+        encodeURIComponent("#THANIABUSINESS") + space + eShoe + space + eRocket;
+
+    const url = "https://wa.me/?text=" + textoMensaje;
     window.open(url, '_blank');
 }
 
