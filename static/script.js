@@ -193,7 +193,7 @@ function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, codigo
     const eRocket = "🚀";
 
     const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
-    const landingUrl = baseUrl + (baseUrl.endsWith('/') ? '' : '/') + "p/" + codigo + ".html?cache=" + new Date().getTime();
+    const landingUrl = baseUrl + (baseUrl.endsWith('/') ? '' : '/') + "p/" + codigo + ".html?v=" + new Date().getTime();
 
     const m = (marca || '').trim().toUpperCase();
     const mod = (modelo || '').trim().toUpperCase();
