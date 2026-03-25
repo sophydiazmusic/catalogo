@@ -25,7 +25,21 @@ async function cargarCatalogo() {
         productosFull = await response.json();
 
         generarFiltrosDeMarca();
-        renderizarProductos(productosFull);
+
+        // Soporte para búsqueda por URL (viniendo de una landing page)
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchParam = urlParams.get('search');
+        if (searchParam) {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.value = searchParam;
+            const filtrados = productosFull.filter(p =>
+                (p.Marca && p.Marca.toLowerCase().includes(searchParam.toLowerCase())) ||
+                (p.Modelo && p.Modelo.toLowerCase().includes(searchParam.toLowerCase()))
+            );
+            renderizarProductos(filtrados);
+        } else {
+            renderizarProductos(productosFull);
+        }
 
     } catch (error) {
         console.error('Error:', error);
@@ -60,8 +74,7 @@ function renderizarProductos(lista) {
         const precioDisplay = p['Precio x 1'] || p['Precio x 1 Visible'] || '0';
         const hasMultiple = p.Fotos && p.Fotos.length > 0;
 
-        // Priorizamos los links de fotos procesados (lh3) sobre el Foto Url original (drive)
-        const principalFoto = (p.Fotos && p.Fotos.length > 0) ? p.Fotos[0] : (p['Foto Url'] || '');
+        const codigo = p.Codigo || p.ID || (idx + 1);
 
         let fotosHtml = hasMultiple
             ? `<div class="gallery-container">
@@ -81,7 +94,7 @@ function renderizarProductos(lista) {
             <div class="product-name">${p.Marca || ''} ${p.Modelo || ''}</div>
             <div class="product-price">$${precioDisplay}</div>
             <div class="product-talle">Talles: ${p['Rango de talles'] || '-'}</div>
-            <button class="btn-ws" onclick="compartirWhatsApp('${p.Marca}', '${p.Modelo}', '${p.Calidad}', '${p.Colores ? p.Colores.join(', ') : ''}', '${p['Rango de talles']}', '${precioDisplay}', '${principalFoto}')">
+            <button class="btn-ws" onclick="compartirWhatsApp('${p.Marca}', '${p.Modelo}', '${p.Calidad}', '${p.Colores ? p.Colores.join(', ') : ''}', '${p['Rango de talles']}', '${precioDisplay}', '${codigo}')">
                 Compartir WhatsApp
             </button>
         `;
@@ -111,7 +124,7 @@ document.getElementById('searchInput')?.addEventListener('input', (e) => {
     renderizarProductos(filtrados);
 });
 
-// Nueva función de la Skill Web Dev para el deslizamiento
+// Deslizamiento de galería
 function moveGallery(btn, direction) {
     const container = btn.parentElement.querySelector('.product-gallery');
     const scrollAmount = container.clientWidth;
@@ -127,7 +140,7 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
         return;
     }
     const status = document.getElementById('status');
-    status.innerText = "⏳ Sincronizando con Excel y enviando a GitHub...";
+    status.innerText = "⏳ Sincronizando con Excel y generando catálogo Pro...";
 
     try {
         const response = await fetch(`${API_URL}/api/refresh`, { method: 'POST' });
@@ -145,61 +158,37 @@ document.getElementById('refreshBtn').addEventListener('click', async () => {
     }
 });
 
-function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, fotoUrl) {
-    // Definimos los emojis YA codificados para URL (esto evita errores de codificación del navegador)
-    const eFuego = '%F0%9F%94%A5'; // 🔥
-    const eRegalo = '%F0%9F%8E%81'; // 🎁
-    const eCheck = '%E2%9C%85';     // ✅
-    const ePin = '%F0%9F%93%8D'; // 📍
-    const eShoe = '%F0%9F%91%9F'; // 👟
-    const eRocket = '%F0%9F%9A%80'; // 🚀
+function compartirWhatsApp(marca, modelo, calidad, color, talles, precio, codigo) {
+    // Emojis literales (soportados por charset="UTF-8")
+    const eFuego = "🔥";
+    const eRegalo = "🎁";
+    const eCheck = "✅";
+    const ePin = "📍";
+    const eShoe = "👟";
+    const eRocket = "🚀";
 
-    let finalUrl = fotoUrl;
+    // Link a la Landing Page del producto (para que WhatsApp muestre la tarjeta con foto)
+    let baseUrl = window.location.href.split('?')[0].split('#')[0];
+    if (baseUrl.endsWith('index.html')) baseUrl = baseUrl.replace('index.html', '');
+    if (!baseUrl.endsWith('/')) baseUrl += '/';
 
-    // Failsafe: Conversión de link de Drive a link de imagen directa (lh3)
-    if (finalUrl.includes('drive.google.com')) {
-        let fileId = "";
-        if (finalUrl.includes('/file/d/')) {
-            fileId = finalUrl.split('/file/d/')[1].split('/')[0];
-        } else if (finalUrl.includes('id=')) {
-            fileId = finalUrl.split('id=')[1].split('&')[0];
-        }
-        if (fileId) {
-            finalUrl = "https://lh3.googleusercontent.com/d/" + fileId;
-        }
-    }
+    const landingUrl = baseUrl + "p/" + codigo + ".html";
 
-    // Optimización de la URL para que WhatsApp la detecte mejor como imagen
-    // Usamos el formato "=s800" que es más estándar para previsualización
-    if (finalUrl.includes('googleusercontent.com')) {
-        finalUrl = finalUrl.split('?')[0] + "=s800";
-    }
-
-    // Aseguramos URL absoluta
-    if (finalUrl.startsWith('/')) {
-        finalUrl = window.location.origin + finalUrl;
-    }
-
-    // Limpieza de campos
     const m = (marca || '').trim().toUpperCase();
     const mod = (modelo || '').trim().toUpperCase();
     const cal = (calidad || 'TRIPLE A').trim().toUpperCase();
     const tal = (talles || '34-43').trim();
 
-    // Construimos el mensaje por partes codificadas para asegurar perfección
-    const nl = '%0A'; // Salto de línea codificado
-    const space = '%20';
-
     const textoMensaje =
-        encodeURIComponent(finalUrl) + nl + nl +
-        eFuego + eRegalo + space + encodeURIComponent("*LLEV\u00C1TE SURTIDO*") + space + eRegalo + eFuego + nl +
-        encodeURIComponent("*" + m + " " + mod + "*") + nl +
-        eFuego + space + encodeURIComponent("*" + cal + "*") + space + eFuego + nl +
-        eCheck + space + encodeURIComponent("Surtido a elecci\u00F3n $" + precio + " c/par") + nl +
-        ePin + space + encodeURIComponent("Talle en " + tal) + nl + nl +
-        encodeURIComponent("#THANIABUSINESS") + space + eShoe + space + eRocket;
+        landingUrl + "\n\n" +
+        eFuego + eRegalo + " *LLEV\u00C1TE SURTIDO* " + eRegalo + eFuego + "\n" +
+        "*" + m + " " + mod + "*\n" +
+        eFuego + " *" + cal + "* " + eFuego + "\n" +
+        eCheck + " Surtido a elecci\u00F3n $" + precio + " c/par\n" +
+        ePin + " Talle en " + tal + "\n\n" +
+        "#THANIABUSINESS " + eShoe + " " + eRocket;
 
-    const url = "https://wa.me/?text=" + textoMensaje;
+    const url = "https://wa.me/?text=" + encodeURIComponent(textoMensaje);
     window.open(url, '_blank');
 }
 
